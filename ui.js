@@ -1,37 +1,13 @@
 "use strict";
 const React = require("react");
-const { useEffect, useState, useRef, useContext } = require("react");
+const { useState, useContext, useEffect } = require("react");
 const { Text, Color, Box, StdinContext } = require("ink");
+const importJsx = require('import-jsx');
+const useInterval = require("./useInterval");
+const EndScreen = importJsx("./EndScreen");
 
-function newSnakePosition(segments, direction) {
-  const [head, ...tail] = segments;
-  const newHead = {
-    x: limitByField(head.x + direction.x),
-    y: limitByField(head.y + direction.y)
-  };
-  return [newHead, ...segments.slice(0, -1)]
-}
-
-function useInterval(callback, delay) {
-  const savedCallback = useRef();
-
-  useEffect(() => {
-    savedCallback.current = callback;
-  }, [callback]);
-
-  // Set up the interval.
-  useEffect(() => {
-    function tick() {
-      savedCallback.current();
-    }
-    if (delay !== null) {
-      let id = setInterval(tick, delay);
-      return () => clearInterval(id);
-    }
-  }, [delay]);
-}
-
-const FIELD_SIZE = 32;
+const FIELD_SIZE = 16;
+const FIELD_ROW = [...new Array(FIELD_SIZE).keys()];
 
 const ARROW_UP = "\u001B[A";
 const ARROW_DOWN = "\u001B[B";
@@ -55,8 +31,34 @@ const limitByField = x => {
   return x;
 };
 
+let foodItem = {
+  x: Math.floor(Math.random() * FIELD_SIZE),
+  y: Math.floor(Math.random() * FIELD_SIZE)
+};
+
+function collidesWithFood(head, foodItem) {
+  return foodItem.x === head.x && foodItem.y === head.y;
+}
+
+function newSnakePosition(segments, direction) {
+  const [head] = segments;
+  const newHead = {
+    x: limitByField(head.x + direction.x),
+    y: limitByField(head.y + direction.y)
+  };
+  if (collidesWithFood(newHead, foodItem)) {
+    foodItem = {
+      x: Math.floor(Math.random() * FIELD_SIZE),
+      y: Math.floor(Math.random() * FIELD_SIZE)
+    };
+    return [newHead, ...segments];
+  } else {
+    return [newHead, ...segments.slice(0, -1)];
+  }
+}
+
 const getItem = (x, y, snakeSegments) => {
-  if (x === 5 && y === 6) {
+  if (foodItem.x === x && foodItem.y === y) {
     return <Color red></Color>;
   }
 
@@ -77,7 +79,7 @@ const App = () => {
     { x: 8, y: 6 }
   ]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     setRawMode(true);
     stdin.on("data", data => {
       const value = data.toString();
@@ -96,24 +98,36 @@ const App = () => {
     });
   }, []);
 
-  useInterval(() => {
-    setSnakeSegments(segments => newSnakePosition(segments, direction));
-  }, 200);
+  const [head, ...tail] = snakeSegments;
+  const intersectsWithItself = tail.some(
+    segment => segment.x === head.x && segment.y === head.y
+  );
+
+  useInterval(
+    () => {
+      setSnakeSegments(segments => newSnakePosition(segments, direction));
+    },
+    intersectsWithItself ? null : 50
+  );
 
   return (
     <Box flexDirection="column" alignItems="center">
       <Text>
         <Color green>Snake</Color> game
       </Text>
-      <Box flexDirection="column">
-        {[...new Array(32).keys()].map(y => (
-          <Box key={y}>
-            {[...new Array(32).keys()].map(x => (
-              <Box key={x}>{getItem(x, y, snakeSegments) || "."}</Box>
-            ))}
-          </Box>
-        ))}
-      </Box>
+      {intersectsWithItself ? (
+        <EndScreen size={FIELD_SIZE}/>
+      ) : (
+        <Box flexDirection="column">
+          {FIELD_ROW.map(y => (
+            <Box key={y}>
+              {FIELD_ROW.map(x => (
+                <Box key={x}> {getItem(x, y, snakeSegments) || "."} </Box>
+              ))}
+            </Box>
+          ))}
+        </Box>
+      )}
     </Box>
   );
 };
