@@ -1,26 +1,35 @@
 "use strict";
 const React = require("react");
-const {useEffect, useState, useRef, useContext} = require("react");
+const { useEffect, useState, useRef, useContext } = require("react");
 const { Text, Color, Box, StdinContext } = require("ink");
 
+function newSnakePosition(segments, direction) {
+  const [head, ...tail] = segments;
+  const newHead = {
+    x: limitByField(head.x + direction.x),
+    y: limitByField(head.y + direction.y)
+  };
+  return [newHead, ...segments.slice(0, -1)]
+}
+
 function useInterval(callback, delay) {
-	const savedCallback = useRef();
-  
-	useEffect(() => {
-	  savedCallback.current = callback;
-	}, [callback]);
-  
-	// Set up the interval.
-	useEffect(() => {
-	  function tick() {
-		savedCallback.current();
-	  }
-	  if (delay !== null) {
-		let id = setInterval(tick, delay);
-		return () => clearInterval(id);
-	  }
-	}, [delay]);
-  }
+  const savedCallback = useRef();
+
+  useEffect(() => {
+    savedCallback.current = callback;
+  }, [callback]);
+
+  // Set up the interval.
+  useEffect(() => {
+    function tick() {
+      savedCallback.current();
+    }
+    if (delay !== null) {
+      let id = setInterval(tick, delay);
+      return () => clearInterval(id);
+    }
+  }, [delay]);
+}
 
 const FIELD_SIZE = 32;
 
@@ -69,7 +78,7 @@ const App = () => {
   ]);
 
   React.useEffect(() => {
-	setRawMode(true);
+    setRawMode(true);
     stdin.on("data", data => {
       const value = data.toString();
       if (value == ARROW_UP) {
@@ -87,14 +96,9 @@ const App = () => {
     });
   }, []);
 
-    useInterval(() => {
-      setSnakeSegments(segments =>
-        segments.map(segment => ({
-          x: limitByField(segment.x + direction.x),
-          y: limitByField(segment.y + direction.y)
-        }))
-      );
-    }, 200);
+  useInterval(() => {
+    setSnakeSegments(segments => newSnakePosition(segments, direction));
+  }, 200);
 
   return (
     <Box flexDirection="column" alignItems="center">
