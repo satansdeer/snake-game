@@ -14,7 +14,7 @@
 		"ui.js"
 	],
 	"dependencies": {
-		"import-jsx": "^2.0.0",
+		"import-jsx": "^4.0.1",
 		"ink": "^2.3.0",
 		"meow": "^5.0.0",
 		"prop-types": "^15.7.2",
